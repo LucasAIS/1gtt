@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora Fadiga KC-390 | 1º GTT</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f4f8;
+        }
+        
+        .fab-header {
+            background-color: #003087; /* Azul FAB */
+            color: white;
+        }
+
+        /* Melhoria na usabilidade de inputs em mobile */
+        select, input {
+            font-size: 16px; 
+        }
+        
+        /* Checkbox customizado */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #68D391;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #68D391;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center py-8 px-4">
+
+    <!-- Container Principal -->
+    <div class="w-full max-w-2xl bg-white rounded-lg shadow-xl overflow-hidden">
+        
+        <!-- Cabeçalho -->
+        <div class="fab-header p-6 text-center">
+            <div class="flex justify-center items-center gap-3 mb-2">
+                <i class="fa-solid fa-plane-up text-3xl"></i>
+                <h1 class="text-2xl font-bold tracking-wide">CALCULADORA DE FADIGA</h1>
+            </div>
+            <p class="text-blue-100 text-sm font-medium">KC-390 | 1º GTT (ZEUS) | AVOP 001/2025</p>
+        </div>
+
+        <!-- Formulário -->
+        <div class="p-6 space-y-6">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Tripulação -->
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="tripulacao">
+                        <i class="fa-solid fa-users mr-1 text-gray-500"></i> Tripulação
+                    </label>
+                    <select id="tripulacao" class="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50">
+                        <option value="simples">Simples (14h / 16h)</option>
+                        <option value="composta">Composta (17h / 19h)</option>
+                        <option value="revezamento">Revezamento (20h / 24h)</option>
+                    </select>
+                </div>
+
+                <!-- Tipo de Missão (Pós-Voo) -->
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="tipo_missao">
+                        <i class="fa-solid fa-suitcase mr-1 text-gray-500"></i> Pós-Voo (Solo)
+                    </label>
+                    <select id="tipo_missao" class="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 disabled:bg-gray-200 disabled:text-gray-500">
+                        <option value="60">Nacional (1h)</option>
+                        <option value="90">Internacional (1h30)</option>
+                    </select>
+                    
+                    <!-- Checkbox Troca de Tripulação -->
+                    <div class="mt-3 flex items-center bg-gray-50 p-2 rounded border border-gray-200">
+                        <input id="troca_tripulacao" type="checkbox" class="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
+                        <label for="troca_tripulacao" class="ml-2 text-sm font-medium text-gray-700 cursor-pointer select-none">
+                            Passagem de Aeronave (Sem pós-voo)
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <!-- Fuso Horário -->
+                 <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="offset">
+                        <i class="fa-solid fa-globe mr-1 text-gray-500"></i> Fuso Local (GMT)
+                    </label>
+                    <select id="offset" class="w-full border border-gray-300 rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50">
+                        <!-- Gerado via JS para lista completa -->
+                    </select>
+                </div>
+
+                <!-- Horário de Início -->
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="inicio_utc">
+                        <i class="fa-regular fa-clock mr-1 text-gray-500"></i> Apresentação (ZULU)
+                    </label>
+                    <input type="time" id="inicio_utc" value="10:00" class="w-full border border-gray-300 rounded-md p-3 text-lg font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50">
+                    <p class="text-xs text-gray-500 mt-1 pl-1" id="local-preview">Local: --:--</p>
+                </div>
+            </div>
+
+            <!-- Botão Calcular -->
+            <button onclick="calcular()" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 px-4 rounded-md shadow transition duration-200 flex justify-center items-center gap-2">
+                <i class="fa-solid fa-calculator"></i> CALCULAR LIMITES
+            </button>
+
+        </div>
+
+        <!-- Resultados -->
+        <div id="resultados" class="hidden bg-gray-50 border-t border-gray-200 p-6">
+            
+            <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                <h3 class="text-gray-500 text-xs font-bold uppercase tracking-wider">Limites para Pouso (Corte dos Motores)</h3>
+                <span id="badge-info-pos-voo" class="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded font-medium"></span>
+            </div>
+
+            <!-- Cartão Jornada Contínua -->
+            <div class="card-result bg-white border-l-4 border-green-500 shadow-sm rounded-r-md p-4 mb-4">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <h4 class="font-bold text-gray-800 text-lg">Jornada Contínua</h4>
+                        <p class="text-xs text-gray-500">Planejamento Padrão</p>
+                    </div>
+                    <span id="limite-continuo-badge" class="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-0.5 rounded">Base: 14h</span>
+                </div>
+                <div class="mt-3 grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-xs text-gray-500">Pouso Limite (ZULU)</p>
+                        <p id="corte-zulu-continuo" class="font-mono text-2xl text-blue-900 font-bold">--:-- Z</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Pouso Limite (Local)</p>
+                        <p id="corte-local-continuo" class="font-mono text-xl text-gray-700 font-bold">--:--</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cartão Jornada Máxima -->
+            <div class="card-result bg-white border-l-4 border-amber-500 shadow-sm rounded-r-md p-4 mb-4">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <h4 class="font-bold text-gray-800 text-lg">Jornada Máxima</h4>
+                        <p class="text-xs text-gray-500">Limite Absoluto (Excepcional)</p>
+                    </div>
+                    <span id="limite-maximo-badge" class="bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-0.5 rounded">Base: 16h</span>
+                </div>
+                <div class="mt-3 grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-xs text-gray-500">Pouso Limite (ZULU)</p>
+                        <p id="corte-zulu-maximo" class="font-mono text-2xl text-blue-900 font-bold">--:-- Z</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Pouso Limite (Local)</p>
+                        <p id="corte-local-maximo" class="font-mono text-xl text-gray-700 font-bold">--:--</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Descanso -->
+            <div class="bg-blue-50 border border-blue-100 rounded-md p-4 flex items-center gap-4">
+                <div class="bg-blue-200 p-2 rounded-full text-blue-800">
+                    <i class="fa-solid fa-bed text-xl"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-blue-600 font-bold uppercase">Descanso Mínimo Necessário</p>
+                    <p id="descanso-resultado" class="text-lg font-bold text-gray-800">-- horas</p>
+                </div>
+            </div>
+
+            <!-- Alertas -->
+            <div class="mt-6 border-t border-gray-200 pt-4 text-xs text-gray-600">
+                <p><strong>Nota:</strong> O horário calculado é o limite para o <u>corte dos motores</u>.</p>
+                <ul class="mt-2 space-y-1 list-disc list-inside text-red-700">
+                    <li>Limite de 2 jornadas sucessivas com voo entre 22h e 06h local.</li>
+                    <li>Proibido voar se cumpriu serviço de 24h com pernoite nas últimas 10h.</li>
+                </ul>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // =====================================================================
+        // INICIALIZAÇÃO E UTILITÁRIOS
+        // =====================================================================
+
+        // Controle do Checkbox de Troca
+        document.getElementById('troca_tripulacao').addEventListener('change', function() {
+            const selectPosVoo = document.getElementById('tipo_missao');
+            if (this.checked) {
+                selectPosVoo.disabled = true;
+            } else {
+                selectPosVoo.disabled = false;
+            }
+        });
+
+        // Preenche o Select de Fusos (GMT -12 a +14)
+        const offsetSelect = document.getElementById('offset');
+        for (let i = -12; i <= 14; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            const sign = i >= 0 ? '+' : '';
+            let label = `GMT ${sign}${i}`;
+            
+            // Labels amigáveis para locais comuns ao KC-390
+            if (i === -3) label += " (Brasília)";
+            if (i === -4) label += " (Manaus/Cuiabá)";
+            if (i === 0) label += " (ZULU/Lisboa)";
+            if (i === 1) label += " (Europa Central)";
+            
+            option.text = label;
+            if (i === -3) option.selected = true; // Default BR
+            offsetSelect.appendChild(option);
+        }
+
+        const limitesBase = {
+            'simples': { continua: 14, maxima: 16 },
+            'composta': { continua: 17, maxima: 19 },
+            'revezamento': { continua: 20, maxima: 24 }
+        };
+
+        // =====================================================================
+        // LÓGICA DE SIMULAÇÃO
+        // =====================================================================
+
+        function simularDuracaoJornada(inicioLocal, limiteFadigaHoras) {
+            let minutosFadigaConsumidos = 0;
+            let minutosReaisDecorridos = 0;
+            let contadorJanelaNoturna = 0;
+            
+            const limiteMinutosFadiga = limiteFadigaHoras * 60;
+            
+            // Simulação começa na hora da apresentação (Local)
+            let relogioSimulado = new Date(inicioLocal.getTime());
+
+            while (minutosFadigaConsumidos < limiteMinutosFadiga) {
+                const hora = relogioSimulado.getHours();
+                
+                // Janela Noturna: 22h00 até 05h59 (inclusive)
+                const ehNoite = (hora >= 22 || hora < 6);
+
+                // Avança 1 minuto no tempo
+                relogioSimulado.setMinutes(relogioSimulado.getMinutes() + 1);
+                minutosReaisDecorridos++;
+                minutosFadigaConsumidos++; // Custo base 1 min real = 1 min fadiga
+
+                if (ehNoite) {
+                    contadorJanelaNoturna++;
+                    // Regra NOPREP: Penalidade de 30min apenas para HORA CHEIA completada
+                    if (contadorJanelaNoturna === 60) {
+                        minutosFadigaConsumidos += 30;
+                        contadorJanelaNoturna = 0;
+                    }
+                } else {
+                    contadorJanelaNoturna = 0; // Zera se sair da janela noturna
+                }
+            }
+            
+            return minutosReaisDecorridos; // Retorna duração TOTAL da jornada (Pré + Voo + Pós)
+        }
+
+        function updateLocalPreview() {
+            const utcTime = document.getElementById('inicio_utc').value;
+            const offset = parseInt(document.getElementById('offset').value);
+            
+            if (!utcTime) return;
+
+            const [h, m] = utcTime.split(':').map(Number);
+            let localH = h + offset;
+            
+            if (localH < 0) localH += 24;
+            if (localH >= 24) localH -= 24; // Ajuste simples para visualização
+
+            const formattedH = localH.toString().padStart(2, '0');
+            const formattedM = m.toString().padStart(2, '0');
+            
+            const offsetStr = offset >= 0 ? `+${offset}` : offset;
+            document.getElementById('local-preview').textContent = `Local: ${formattedH}:${formattedM}`;
+        }
+
+        // Listeners
+        document.getElementById('inicio_utc').addEventListener('change', updateLocalPreview);
+        document.getElementById('offset').addEventListener('change', updateLocalPreview);
+        updateLocalPreview();
+
+        function calcular() {
+            // 1. Entradas
+            const tipoTripulacao = document.getElementById('tripulacao').value;
+            const inicioUtcStr = document.getElementById('inicio_utc').value;
+            const offset = parseInt(document.getElementById('offset').value);
+            
+            // Verifica se é troca de tripulação
+            const isTroca = document.getElementById('troca_tripulacao').checked;
+            let tempoPosVooMinutos = parseInt(document.getElementById('tipo_missao').value);
+            
+            if (isTroca) {
+                tempoPosVooMinutos = 0;
+            }
+
+            if (!inicioUtcStr) {
+                alert("Insira o horário de apresentação.");
+                return;
+            }
+
+            const [h, m] = inicioUtcStr.split(':').map(Number);
+            
+            // 2. Data Base (Hoje)
+            const hoje = new Date();
+            // Data de Início em UTC
+            const inicioUtc = new Date(Date.UTC(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), h, m, 0));
+            
+            // Data de Início Local (simulada para cálculo da noite)
+            const dataSimulacaoLocal = new Date(2025, 0, 1, h + offset, m, 0); 
+
+            // 3. Simulação
+            const limites = limitesBase[tipoTripulacao];
+            
+            // Calcula a duração total da jornada permitida (do Show-up até o fim do Pós-voo)
+            const duracaoTotalContinua = simularDuracaoJornada(dataSimulacaoLocal, limites.continua);
+            const duracaoTotalMaxima = simularDuracaoJornada(dataSimulacaoLocal, limites.maxima);
+
+            // 4. Cálculo do Pouso/Corte
+            // O Pouso deve acontecer ANTES do pós-voo.
+            // Pouso = (Inicio + DuracaoTotal) - TempoPosVoo
+            
+            const fimJornadaUtcContinua = new Date(inicioUtc.getTime() + duracaoTotalContinua * 60000);
+            const pousoUtcContinua = new Date(fimJornadaUtcContinua.getTime() - tempoPosVooMinutos * 60000);
+            
+            const fimJornadaUtcMaxima = new Date(inicioUtc.getTime() + duracaoTotalMaxima * 60000);
+            const pousoUtcMaxima = new Date(fimJornadaUtcMaxima.getTime() - tempoPosVooMinutos * 60000);
+
+            // Ajuste para exibir horário local
+            const offsetMs = offset * 3600000;
+            const pousoLocalContinua = new Date(pousoUtcContinua.getTime() + offsetMs);
+            const pousoLocalMaxima = new Date(pousoUtcMaxima.getTime() + offsetMs);
+
+            // 5. Descanso
+            // O descanso é baseado na jornada *total* realizada (incluindo o pós-voo que consumiu fadiga)
+            let descanso = 0;
+            const jornadaRef = limites.maxima; 
+            if (jornadaRef <= 12) descanso = 10;
+            else if (jornadaRef <= 16) descanso = 12;
+            else if (jornadaRef <= 20) descanso = 14;
+            else descanso = 16;
+
+            // 6. Atualização UI
+            const fmtHora = (d) => {
+                return d.getUTCHours().toString().padStart(2, '0') + ':' + 
+                       d.getUTCMinutes().toString().padStart(2, '0');
+            };
+
+            // Badge Update
+            document.getElementById('limite-continuo-badge').textContent = `Base: ${limites.continua}h`;
+            document.getElementById('limite-maximo-badge').textContent = `Base: ${limites.maxima}h`;
+            
+            // Atualiza badge de informação do Pós-Voo
+            const infoPosVoo = document.getElementById('badge-info-pos-voo');
+            if (isTroca) {
+                infoPosVoo.textContent = "Pós-Voo: 0h (Troca de Tripulação)";
+                infoPosVoo.className = "text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium";
+            } else {
+                const tempoStr = tempoPosVooMinutos === 60 ? "1h" : "1h30";
+                infoPosVoo.textContent = `Pós-Voo: ${tempoStr} (Já descontado)`;
+                infoPosVoo.className = "text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded font-medium";
+            }
+
+            // Outputs
+            document.getElementById('corte-zulu-continuo').textContent = fmtHora(pousoUtcContinua) + " Z";
+            document.getElementById('corte-local-continuo').textContent = fmtHora(pousoLocalContinua);
+
+            document.getElementById('corte-zulu-maximo').textContent = fmtHora(pousoUtcMaxima) + " Z";
+            document.getElementById('corte-local-maximo').textContent = fmtHora(pousoLocalMaxima);
+
+            document.getElementById('descanso-resultado').textContent = `${descanso} horas`;
+
+            document.getElementById('resultados').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
