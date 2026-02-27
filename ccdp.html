@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KC-390 - CCDP Calculator</title>
+    <style>
+        :root {
+            --bg-color: #0d0d0d;
+            --panel-bg: #1a1a1a;
+            --text-color: #f5f5f5;
+            --accent: #0a84ff;
+            --border: #333;
+            --highlight: #262626;
+            --input-bg: #000;
+            --success: #30d158;
+            --warning: #ff9f0a;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1, h2 { color: var(--accent); margin-top: 0; text-transform: uppercase; font-size: 1.1rem; border-bottom: 1px solid var(--border); padding-bottom: 10px;}
+        .container { display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; max-width: 1200px; margin: auto; }
+        @media (max-width: 850px) { .container { grid-template-columns: 1fr; } }
+        .panel { background-color: var(--panel-bg); border: 1px solid var(--border); border-radius: 8px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .form-group { display: flex; justify-content: space-between; margin-bottom: 10px; align-items: center; font-size: 0.95rem; }
+        .form-group label { font-weight: 500; color: #ccc; }
+        input { background-color: var(--input-bg); border: 1px solid var(--border); color: var(--text-color); padding: 8px; border-radius: 4px; width: 90px; text-align: right; font-weight: bold; font-size: 1rem; }
+        input:focus { border-color: var(--accent); outline: none; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.95rem; text-align: right; }
+        th, td { border: 1px solid var(--border); padding: 10px; }
+        th { background-color: var(--highlight); color: var(--accent); text-align: right; }
+        th:first-child { text-align: left; }
+        .btn-calc { background-color: var(--accent); color: #fff; border: none; padding: 15px; width: 100%; border-radius: 5px; margin-top: 20px; cursor: pointer; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; font-size: 1rem; }
+        .btn-calc:hover { background-color: #0066cc; }
+        .result-highlight { color: var(--success); font-weight: bold; }
+        .section-title { color: var(--warning); font-size: 0.85rem; margin-top: 20px; margin-bottom: 10px; letter-spacing: 1px;}
+        .info-text { font-size: 0.8rem; color: #888; text-align: right; margin-top: 5px; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="panel">
+        <h2>CCDP SETUP</h2>
+        
+        <div class="section-title">METEOROLOGY</div>
+        <div class="form-group"><label>TEMP (°C)</label><input type="number" id="temp" value="25"></div>
+        <div class="form-group"><label>QNH (hPa)</label><input type="number" id="qnh" value="1013"></div>
+
+        <div class="section-title">AIRCRAFT PARAMETERS</div>
+        <div class="form-group"><label>TAP DZ DIST (NM)</label><input type="number" id="tapDist" value="15" step="0.1"></div>
+        <div class="form-group"><label>TAP SPD (KCAS)</label><input type="number" id="tapSpd" value="270"></div>
+        <div class="form-group"><label>TAP ALT (FT)</label><input type="number" id="tapAlt" value="600"></div>
+        <div class="form-group"><label>SDP SPD (KCAS)</label><input type="number" id="sdpSpd" value="240"></div>
+        <div class="form-group"><label>DROP SPD (KCAS)</label><input type="number" id="dropSpd" value="140"></div>
+        <div class="form-group"><label>DROP ALT (FT)</label><input type="number" id="dropAlt" value="600"></div>
+        <div class="form-group"><label>FPA (°)</label><input type="number" id="fpa" value="3.0" step="0.1"></div>
+        
+        <div class="section-title">DROP ZONE & TIMINGS</div>
+        <div class="form-group"><label>DZ LENGTH (FT)</label><input type="number" id="dzLength" value="3400"></div>
+        <div class="form-group"><label>RDY TIME (s)</label><input type="number" id="rdyTime" value="10"></div>
+        <div class="form-group"><label>ESC TIME (s)</label><input type="number" id="escTime" value="10"></div>
+        
+        <button class="btn-calc" onclick="calculateCCDP()">CALCULAR ROTA</button>
+    </div>
+
+    <div class="panel">
+        <h2>ROUTE TIMING EICAS</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>PONTO</th>
+                    <th>DIST (NM)</th>
+                    <th>ETE</th>
+                    <th>DTG (NM)</th>
+                    <th>ETA</th>
+                </tr>
+            </thead>
+            <tbody id="routeTable"></tbody>
+        </table>
+        <div id="tas-info" class="info-text"></div>
+    </div>
+</div>
+
+<script>
+    const FT_TO_NM = 1 / 6076.12; 
+    const DEG_TO_RAD = Math.PI / 180;
+
+    function formatTime(seconds) {
+        if(seconds === 0 || isNaN(seconds)) return "00:00";
+        const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const s = Math.round(seconds % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
+    }
+
+    // Função Aerodinâmica: Converte KCAS para TAS baseado em Altitude, Temp e QNH
+    function kcasToTas(kcas, alt, temp, qnh) {
+        let pa = alt + (1013.25 - qnh) * 30; // Pressure Altitude
+        let tk = temp + 273.15; // Kelvin
+        // Aproximação ISA da pressão em hPa para a altitude
+        let p = 1013.25 * Math.pow(1 - (0.000006875 * pa), 5.2559);
+        // Razão de densidade (Sigma)
+        let sigma = (p / 1013.25) * (288.15 / tk);
+        
+        return kcas / Math.sqrt(sigma);
+    }
+
+    function calculateCCDP() {
+        // Coleta de Dados
+        const temp = parseFloat(document.getElementById('temp').value) || 15;
+        const qnh = parseFloat(document.getElementById('qnh').value) || 1013;
+        
+        const tapSpd = parseFloat(document.getElementById('tapSpd').value) || 270;
+        const tapAlt = parseFloat(document.getElementById('tapAlt').value) || 600;
+        const sdpSpd = parseFloat(document.getElementById('sdpSpd').value) || 240;
+        const dropSpd = parseFloat(document.getElementById('dropSpd').value) || 140;
+        const dropAlt = parseFloat(document.getElementById('dropAlt').value) || 600;
+        
+        const fpaDeg = parseFloat(document.getElementById('fpa').value) || 3.0;
+        const dzLength = parseFloat(document.getElementById('dzLength').value) || 3400;
+        const rdyTime = parseFloat(document.getElementById('rdyTime').value) || 10;
+        const escTime = parseFloat(document.getElementById('escTime').value) || 10;
+        const tapDzDist = parseFloat(document.getElementById('tapDist').value) || 5.0;
+
+        // CONVERSÃO KCAS -> TAS
+        const tapTas = kcasToTas(tapSpd, tapAlt, temp, qnh);
+        const sdpTas = kcasToTas(sdpSpd, dropAlt, temp, qnh);
+        const dropTas = kcasToTas(dropSpd, dropAlt, temp, qnh);
+
+        document.getElementById('tas-info').innerText = 
+            `Drop Speed: ${dropSpd} KCAS -> ${dropTas.toFixed(1)} KTAS`;
+
+        // 1. IP -> ACP (Fórmula de doutrina usando TAS)
+        let distIpAcp = Math.pow(tapTas, 2) / 15214;
+        distIpAcp = Math.max(1, Math.min(distIpAcp, 7)); 
+
+        // 2. ACP -> SDP (Mudança de Altitude + Desaceleração com TAS)
+        let altChangeNm = Math.abs(tapAlt - dropAlt) * FT_TO_NM;
+        let fpaRad = Math.abs(fpaDeg) * DEG_TO_RAD;
+        let altSegment = fpaRad > 0 ? (altChangeNm / Math.tan(fpaRad)) : 0;
+        let slowSegment = (0.1715 * (Math.pow(tapTas, 2) - Math.pow(sdpTas, 2))) / 1852;
+        let distAcpSdp = altSegment + slowSegment;
+
+        // 3. SDP -> DPRDY (Desaceleração 1.5kt/s, mín 0.5 NM usando TAS)
+        let distSdpDprdy = 0.5;
+        if (sdpTas !== dropTas) {
+            let timeSec = Math.abs(sdpTas - dropTas) / 1.5;
+            let avgTas = (sdpTas + dropTas) / 2;
+            let calcDist = (avgTas * timeSec) / 3600;
+            distSdpDprdy = Math.max(0.5, calcDist);
+        }
+
+        // 4. DPRDY -> DPON (Tempo Constante RDY x Drop TAS)
+        let distDprdyDpon = (dropTas * rdyTime) / 3600;
+
+        // 5. DPON -> DPOFF (Alinhado com a DZ)
+        let distDponDpoff = (dzLength * FT_TO_NM) / 2;
+
+        // 6. DPOFF -> ESC (Tempo Constante ESC x Drop TAS)
+        let distDpoffEsc = (dropTas * escTime) / 3600;
+
+        // 7. TAP -> IP (Ajuste para fechar a distância)
+        let distTapIp = tapDzDist - (distIpAcp + distAcpSdp + distSdpDprdy + distDprdyDpon);
+        if (distTapIp < 0) distTapIp = 2.0; 
+
+        // Matriz de Pontos usando TAS
+        const legs = [
+            { id: "TAP",   dist: 0,              spd: tapTas },
+            { id: "IP",    dist: distTapIp,      spd: tapTas },
+            { id: "ACP",   dist: distIpAcp,      spd: tapTas },
+            { id: "LEV",   dist: 0,              spd: tapTas }, 
+            { id: "SDP",   dist: distAcpSdp,     spd: (tapTas + sdpTas) / 2 },
+            { id: "DPRDY", dist: distSdpDprdy,   spd: (sdpTas + dropTas) / 2 },
+            { id: "DPON",  dist: distDprdyDpon,  spd: dropTas },
+            { id: "DPOFF", dist: distDponDpoff,  spd: dropTas },
+            { id: "ESC",   dist: distDpoffEsc,   spd: dropTas }
+        ];
+
+        let totalTime = 0;
+        let totalDist = 0;
+        let html = "";
+
+        legs.forEach(leg => {
+            let legTimeSec = leg.dist === 0 ? 0 : (leg.dist / leg.spd) * 3600;
+            totalTime += legTimeSec;
+            totalDist += leg.dist;
+
+            html += `<tr>
+                <td style="text-align: left; font-weight: bold;">${leg.id}</td>
+                <td>${leg.dist.toFixed(1)}</td>
+                <td>${formatTime(legTimeSec)}</td>
+                <td class="result-highlight">${totalDist.toFixed(1)}</td>
+                <td class="result-highlight">${formatTime(totalTime)}</td>
+            </tr>`;
+        });
+
+        document.getElementById('routeTable').innerHTML = html;
+    }
+
+    window.onload = calculateCCDP;
+</script>
+
+</body>
+</html>
